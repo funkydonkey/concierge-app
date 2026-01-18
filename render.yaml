@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: voice-notes-service
+    env: python
+    runtime: python-3.11
+    region: oregon
+    plan: starter
+    buildCommand: "pip install -e ."
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_REPO_OWNER
+        sync: false
+      - key: GITHUB_REPO_NAME
+        sync: false
+      - key: GITHUB_BRANCH
+        value: main
+      - key: APP_ENV
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      - key: PORT
+        value: 8000
+    healthCheckPath: /api/health
