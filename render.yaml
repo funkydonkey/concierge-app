@@ -2,7 +2,7 @@ services:
   - type: web
     name: voice-notes-service
     env: python
-    runtime: python-3.11
+    runtime: python
     region: oregon
     plan: starter
     buildCommand: "pip install -e ."
