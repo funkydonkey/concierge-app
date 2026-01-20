@@ -41,7 +41,7 @@ class GoogleCalendarService:
         # Создаём клиент Calendar API
         self.service = build("calendar", "v3", credentials=credentials)
 
-    async def create_event(
+    def create_event(
         self,
         summary: str,
         start_datetime: datetime,
@@ -95,14 +95,21 @@ class GoogleCalendarService:
                 body=event
             ).execute()
 
-            logger.info(f"Created calendar event: {summary} at {start_datetime}")
+            event_id = result.get("id")
+            html_link = result.get("htmlLink")
+            logger.info(
+                f"✅ Calendar event created successfully: '{summary}' at {start_datetime.isoformat()}\n"
+                f"   Calendar ID: {self.calendar_id}\n"
+                f"   Event ID: {event_id}\n"
+                f"   Link: {html_link}"
+            )
 
             return {
-                "id": result.get("id"),
+                "id": event_id,
                 "summary": result.get("summary"),
                 "start": result["start"].get("dateTime"),
                 "end": result["end"].get("dateTime"),
-                "htmlLink": result.get("htmlLink")
+                "htmlLink": html_link
             }
 
         except HttpError as e:
@@ -112,7 +119,7 @@ class GoogleCalendarService:
             logger.error(f"Error creating calendar event: {e}", exc_info=True)
             raise
 
-    async def list_upcoming_events(self, max_results: int = 10) -> list[dict]:
+    def list_upcoming_events(self, max_results: int = 10) -> list[dict]:
         """
         Получает список ближайших событий.
 

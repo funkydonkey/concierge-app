@@ -90,8 +90,8 @@ async def create_calendar_event(
         # Вычисляем дату окончания
         end_datetime = start_datetime + timedelta(minutes=duration_minutes)
 
-        # Создаём событие
-        await calendar.create_event(
+        # Создаём событие (синхронный вызов Google API)
+        calendar.create_event(
             summary=title,
             start_datetime=start_datetime,
             end_datetime=end_datetime,
@@ -128,7 +128,7 @@ async def list_calendar_events(
         raise ValueError("GoogleCalendarService не передан!")
 
     try:
-        events = await calendar.list_upcoming_events(max_results=max_results)
+        events = calendar.list_upcoming_events(max_results=max_results)
 
         if not events:
             return "В календаре нет ближайших событий."
