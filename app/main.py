@@ -40,10 +40,11 @@ logger.info(f"GOOGLE_CALENDAR_CREDENTIALS_JSON is {'set' if settings.google_cale
 
 if settings.google_calendar_credentials:
     try:
-        logger.info(f"Initializing Google Calendar with calendar_id: {settings.google_calendar_id}")
+        logger.info(f"Initializing Google Calendar with calendar_id: {settings.google_calendar_id}, timezone: {settings.google_calendar_timezone}")
         calendar_service = GoogleCalendarService(
             credentials_json=settings.google_calendar_credentials,
-            calendar_id=settings.google_calendar_id
+            calendar_id=settings.google_calendar_id,
+            timezone=settings.google_calendar_timezone
         )
         logger.info("✅ Google Calendar service initialized successfully")
     except Exception as e:

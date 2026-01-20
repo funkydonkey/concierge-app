@@ -3,7 +3,10 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(touch:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(git push:*)",
+      "Bash(source .venv/bin/activate)",
+      "Bash(ruff check:*)"
     ],
     "deny": [],
     "ask": []

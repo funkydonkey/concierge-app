@@ -22,15 +22,17 @@ class GoogleCalendarService:
     Использует Service Account credentials для авторизации.
     """
 
-    def __init__(self, credentials_json: dict, calendar_id: str = "primary"):
+    def __init__(self, credentials_json: dict, calendar_id: str = "primary", timezone: str = "Europe/Berlin"):
         """
         Инициализация сервиса.
 
         Args:
             credentials_json: Service Account credentials в формате dict
             calendar_id: ID календаря (default: "primary")
+            timezone: Временная зона для событий (default: "Europe/Berlin")
         """
         self.calendar_id = calendar_id
+        self.timezone = timezone
 
         # Создаём credentials из JSON
         credentials = service_account.Credentials.from_service_account_info(
@@ -75,11 +77,11 @@ class GoogleCalendarService:
                 "summary": summary,
                 "start": {
                     "dateTime": start_datetime.isoformat(),
-                    "timeZone": "Europe/Moscow",  # Можно сделать настраиваемым
+                    "timeZone": self.timezone,
                 },
                 "end": {
                     "dateTime": end_datetime.isoformat(),
-                    "timeZone": "Europe/Moscow",
+                    "timeZone": self.timezone,
                 },
             }
 

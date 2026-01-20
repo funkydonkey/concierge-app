@@ -50,3 +50,4 @@ temp_audio/
 # OS
 .DS_Store
 Thumbs.db
+format_credentials.py

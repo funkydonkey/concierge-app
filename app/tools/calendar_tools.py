@@ -8,28 +8,33 @@ from datetime import datetime, timedelta
 from typing import Annotated
 from app.services.google_calendar import GoogleCalendarService
 import re
+from zoneinfo import ZoneInfo
 
 
-def parse_russian_date(date_str: str) -> datetime:
+def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> datetime:
     """
-    Парсит русскоязычные описания дат в datetime.
+    Парсит русскоязычные описания дат в datetime с учетом временной зоны.
 
     Args:
-        date_str: Строка с датой ("завтра", "в пятницу", "через неделю", "2025-01-20 15:00")
+        date_str: Строка с датой ("завтра", "в пятницу", "через неделю", "2026-01-20 15:00")
+        timezone: Временная зона (по умолчанию Europe/Berlin)
 
     Returns:
-        datetime объект
+        datetime объект с временной зоной
     """
     date_str = date_str.lower().strip()
-    now = datetime.now()
+    tz = ZoneInfo(timezone)
+    now = datetime.now(tz)
 
     # ISO формат с временем
     if re.match(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}", date_str):
-        return datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+        dt = datetime.strptime(date_str, "%Y-%m-%d %H:%M")
+        return dt.replace(tzinfo=tz)
 
     # ISO формат без времени (берём 10:00 по умолчанию)
     if re.match(r"\d{4}-\d{2}-\d{2}", date_str):
-        return datetime.strptime(date_str + " 10:00", "%Y-%m-%d %H:%M")
+        dt = datetime.strptime(date_str + " 10:00", "%Y-%m-%d %H:%M")
+        return dt.replace(tzinfo=tz)
 
     # Относительные даты
     if "завтра" in date_str:
@@ -84,8 +89,8 @@ async def create_calendar_event(
         return "❌ Ошибка: Google Calendar не настроен. Добавьте GOOGLE_CALENDAR_CREDENTIALS_JSON в переменные окружения."
 
     try:
-        # Парсим дату начала
-        start_datetime = parse_russian_date(start_date)
+        # Парсим дату начала с учетом timezone календаря
+        start_datetime = parse_russian_date(start_date, timezone=calendar.timezone)
 
         # Вычисляем дату окончания
         end_datetime = start_datetime + timedelta(minutes=duration_minutes)

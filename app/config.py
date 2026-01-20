@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     # Google Calendar (опционально)
     google_calendar_credentials_json: Optional[str] = None
     google_calendar_id: str = "primary"
+    google_calendar_timezone: str = "Europe/Berlin"  # CET timezone
 
     # App settings
     app_env: str = "development"
