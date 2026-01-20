@@ -156,20 +156,24 @@ You should see:
 
 ### Wrong timezone
 
-**By default**, events are created in `Europe/Moscow` timezone.
+**By default**, events are created in `Europe/Berlin` (CET) timezone.
 
 **To change**:
-Edit `app/services/google_calendar.py`:
-```python
-"timeZone": "Europe/Moscow",  # Change to your timezone
+Set environment variable in Render or `.env`:
+```bash
+GOOGLE_CALENDAR_TIMEZONE=Your/Timezone
 ```
 
 Common timezones:
-- `America/New_York` - US Eastern
-- `America/Los_Angeles` - US Pacific
-- `Europe/London` - UK
-- `Asia/Tokyo` - Japan
-- `Australia/Sydney` - Australia
+- `Europe/Berlin` - Germany (CET/CEST) - **Default**
+- `Europe/Moscow` - Russia (MSK)
+- `America/New_York` - US Eastern (EST/EDT)
+- `America/Los_Angeles` - US Pacific (PST/PDT)
+- `Europe/London` - UK (GMT/BST)
+- `Asia/Tokyo` - Japan (JST)
+- `Australia/Sydney` - Australia (AEDT)
+
+Full list: [IANA timezone database](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
 
 ## Security Best Practices
 
