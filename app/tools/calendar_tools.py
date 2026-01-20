@@ -81,7 +81,7 @@ async def create_calendar_event(
         Сообщение об успешном создании события
     """
     if calendar is None:
-        raise ValueError("GoogleCalendarService не передан!")
+        return "❌ Ошибка: Google Calendar не настроен. Добавьте GOOGLE_CALENDAR_CREDENTIALS_JSON в переменные окружения."
 
     try:
         # Парсим дату начала
@@ -125,7 +125,7 @@ async def list_calendar_events(
         Список событий в виде строки
     """
     if calendar is None:
-        raise ValueError("GoogleCalendarService не передан!")
+        return "❌ Ошибка: Google Calendar не настроен. Добавьте GOOGLE_CALENDAR_CREDENTIALS_JSON в переменные окружения."
 
     try:
         events = calendar.list_upcoming_events(max_results=max_results)

@@ -35,16 +35,22 @@ vault_service = GitHubVaultService(
 
 # Initialize Google Calendar (опционально)
 calendar_service = None
+logger.info("Checking Google Calendar configuration...")
+logger.info(f"GOOGLE_CALENDAR_CREDENTIALS_JSON is {'set' if settings.google_calendar_credentials_json else 'not set'}")
+
 if settings.google_calendar_credentials:
     try:
+        logger.info(f"Initializing Google Calendar with calendar_id: {settings.google_calendar_id}")
         calendar_service = GoogleCalendarService(
             credentials_json=settings.google_calendar_credentials,
             calendar_id=settings.google_calendar_id
         )
-        logger.info("Google Calendar service initialized")
+        logger.info("✅ Google Calendar service initialized successfully")
     except Exception as e:
-        logger.warning(f"Failed to initialize Google Calendar: {e}")
+        logger.error(f"❌ Failed to initialize Google Calendar: {e}", exc_info=True)
         logger.warning("Calendar integration will be disabled")
+else:
+    logger.info("Google Calendar credentials not provided - calendar integration disabled")
 
 transcriber = WhisperTranscriber(api_key=settings.openai_api_key)
 agent = VoiceNotesAgent(

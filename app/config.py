@@ -28,7 +28,12 @@ class Settings(BaseSettings):
     def google_calendar_credentials(self) -> Optional[dict]:
         """Parse Google Calendar credentials from JSON string."""
         if self.google_calendar_credentials_json:
-            return json.loads(self.google_calendar_credentials_json)
+            try:
+                return json.loads(self.google_calendar_credentials_json)
+            except json.JSONDecodeError as e:
+                import logging
+                logging.error(f"Failed to parse GOOGLE_CALENDAR_CREDENTIALS_JSON: {e}")
+                return None
         return None
 
     model_config = SettingsConfigDict(
