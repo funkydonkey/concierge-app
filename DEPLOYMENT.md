@@ -68,21 +68,81 @@ obsidian-vault/
 
 ## Step 4: Configure iOS Shortcuts
 
-1. Open Shortcuts app on iPhone
-2. Create new shortcut:
-   - **Action 1**: "Record Audio" → Until tap to stop
-   - **Action 2**: "Get contents of..." → Select recorded audio
-   - **Action 3**: "Get file..." → From "Shortcut Input"
-   - **Action 4**: "Make a request to..." → Your Render URL + `/api/voice`
-     - Method: POST
-     - Form:
-       - Key: `audio`
-       - Value: [File from previous step]
-       - Type: File
-   - **Action 5**: "Get value for..." → `transcription` from JSON
-   - **Action 6**: "Show notification" → With transcription text
+> **📱 Подробная инструкция:** См. [IOS_SHORTCUTS_GUIDE.md](IOS_SHORTCUTS_GUIDE.md) для детального руководства с примерами и устранением проблем.
 
-3. Add to home screen or widget for quick access
+### Creating the Shortcut
+
+1. **Open Shortcuts app** on iPhone
+
+2. **Tap "+" (New Shortcut)** in top right corner
+
+3. **Add Action 1 - Record Audio**:
+   - Search for and add "Record Audio"
+   - Configure: Tap "Until You Tap Stop" or set a time limit
+   - This records the voice note
+
+4. **Add Action 2 - Get Contents of URL**:
+   - Search for and add "Get Contents of URL"
+   - Tap "URL" field and enter: `https://your-app.onrender.com/api/voice`
+   - Tap "Show More" to expand options
+   - Set **Method**: `POST`
+   - Set **Request Body**: `Form`
+   - Tap "Add new field":
+     - Key: `audio`
+     - Value: Tap and select "Recorded Audio" (from previous action)
+     - Type will automatically be set to file
+
+5. **Add Action 3 - Get Dictionary Value** (Optional but recommended):
+   - Search for and add "Get Dictionary Value"
+   - Set key: `transcription`
+   - This extracts the transcription text from the response
+
+6. **Add Action 4 - Show Notification**:
+   - Search for and add "Show Notification"
+   - Set text to "Dictionary Value" from previous step
+   - This shows you the transcribed text
+
+7. **Name your shortcut**: Tap "Done" and name it (e.g., "Voice to Obsidian")
+
+8. **Add to Home Screen** (Optional):
+   - Tap the shortcut → Tap "..." menu
+   - Tap "Add to Home Screen"
+   - Choose icon and name
+   - Tap "Add"
+
+### Alternative: Simpler Version (No Notification)
+
+If you just want to send the audio without seeing the result:
+1. Record Audio
+2. Get Contents of URL (configured as above)
+3. Done!
+
+The notes will appear in your Obsidian vault automatically.
+
+### Testing
+
+1. Run the shortcut
+2. Record a test message (e.g., "Нужно купить молоко")
+3. Wait for processing (5-10 seconds)
+4. Check notification (if configured)
+5. Wait 1-5 minutes for Obsidian Git to sync
+6. Check your vault for the new TODO/note
+
+### Troubleshooting Shortcuts
+
+**"Network Error"**:
+- Check URL is correct (https://your-app.onrender.com/api/voice)
+- Verify your Render app is running
+- Check health endpoint in browser first
+
+**"No Response"**:
+- Recording might be too long (Render free tier has timeout)
+- Check Render logs for errors
+
+**"Invalid Response"**:
+- Check response in Shortcuts debugger (tap play icon)
+- Look at "Contents of URL" output
+- Verify error message in response
 
 ## Step 5: Verify Setup
 

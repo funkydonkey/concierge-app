@@ -10,6 +10,7 @@ from app.models import VoiceNoteResponse, HealthCheckResponse
 from app.services.transcriber import WhisperTranscriber
 from app.services.agent import VoiceNotesAgent
 from app.services.github_vault import GitHubVaultService
+from app.services.google_calendar import GoogleCalendarService
 
 # Configure logging
 logging.basicConfig(
@@ -32,8 +33,25 @@ vault_service = GitHubVaultService(
     branch=settings.github_branch
 )
 
+# Initialize Google Calendar (опционально)
+calendar_service = None
+if settings.google_calendar_credentials:
+    try:
+        calendar_service = GoogleCalendarService(
+            credentials_json=settings.google_calendar_credentials,
+            calendar_id=settings.google_calendar_id
+        )
+        logger.info("Google Calendar service initialized")
+    except Exception as e:
+        logger.warning(f"Failed to initialize Google Calendar: {e}")
+        logger.warning("Calendar integration will be disabled")
+
 transcriber = WhisperTranscriber(api_key=settings.openai_api_key)
-agent = VoiceNotesAgent(api_key=settings.openai_api_key, vault_service=vault_service)
+agent = VoiceNotesAgent(
+    api_key=settings.openai_api_key,
+    vault_service=vault_service,
+    calendar_service=calendar_service
+)
 
 
 @app.get("/api/health", response_model=HealthCheckResponse)
@@ -42,12 +60,15 @@ async def health_check():
     try:
         # Basic health check - services are initialized on startup
         # Could add actual API pings here if needed
+        services_status = {
+            "openai": "configured",
+            "github": "configured",
+            "google_calendar": "enabled" if calendar_service else "disabled"
+        }
+
         return HealthCheckResponse(
             status="healthy",
-            services={
-                "openai": "configured",
-                "github": "configured"
-            },
+            services=services_status,
             vault={
                 "repo": f"{settings.github_repo_owner}/{settings.github_repo_name}",
                 "branch": settings.github_branch

@@ -22,9 +22,18 @@ AGENT_SYSTEM_PROMPT = """
 
 ТИПЫ КОНТЕНТА:
 
-1. ЗАДАЧИ (TODO):
-   Триггеры: "нужно", "надо", "не забыть", "купить", "сделать", "позвонить", "отправить", "написать", "проверить", "записаться"
+1. ВСТРЕЧИ И СОБЫТИЯ (CALENDAR):
+   Триггеры: "встреча", "звонок", "созвон", "запланировать", "записаться", "назначить встречу", "поставить напоминание"
+   Действие: create_calendar_event()
+   - Используй когда указано КОНКРЕТНОЕ ВРЕМЯ ("завтра в 15:00", "в пятницу в 10:00")
+   - Определи длительность (по умолчанию 60 минут)
+   - Извлеки место проведения если указано
+   - Формат даты: "завтра в 15:00", "2025-01-20 10:00", "в пятницу в 14:30"
+
+2. ЗАДАЧИ (TODO):
+   Триггеры: "нужно", "надо", "не забыть", "купить", "сделать", "позвонить", "отправить", "написать", "проверить"
    Действие: add_todo_task()
+   - Используй когда НЕТ конкретного времени или это общая задача без встречи
    - Формулируй задачу с глагола в инфинитиве
    - Определи приоритет: high (срочно, важно), medium (обычные дела), low (когда-нибудь)
    - Если есть дата/срок - укажи due_date
@@ -57,11 +66,20 @@ AGENT_SYSTEM_PROMPT = """
 
 ПРИМЕРЫ:
 
-Пример 1 - Задача:
+Пример 1 - Событие в календаре:
+Вход: "Встреча с клиентом завтра в 15:00 в офисе на Тверской"
+Действие: create_calendar_event(
+    title="Встреча с клиентом",
+    start_date="завтра в 15:00",
+    duration_minutes=60,
+    location="Офис на Тверской"
+)
+
+Пример 2 - Задача:
 Вход: "Нужно купить молоко и хлеб завтра утром"
 Действие: add_todo_task(task="Купить молоко и хлеб", priority="medium", due_date="2025-01-18")
 
-Пример 2 - Идея:
+Пример 3 - Идея:
 Вход: "Эээ, знаешь, идея, можно сделать приложение для отслеживания привычек с геймификацией, ну типа как в играх"
 Действие: create_note(
     title="Приложение для отслеживания привычек",
@@ -69,7 +87,7 @@ AGENT_SYSTEM_PROMPT = """
     folder="Ideas"
 )
 
-Пример 3 - Рабочая заметка:
+Пример 4 - Рабочая заметка:
 Вход: "Встреча по проекту Альфа. Обсудили новый дизайн. Саша предложил изменить цветовую схему. Нужно показать прототип до пятницы"
 Действие: create_note(
     title="Встреча по проекту Альфа",
@@ -78,7 +96,7 @@ AGENT_SYSTEM_PROMPT = """
 )
 + add_todo_task(task="Показать прототип проекта Альфа", priority="high", due_date="2025-01-24")
 
-Пример 4 - Личная заметка:
+Пример 5 - Личная заметка:
 Вход: "Сегодня увидел красивый закат. Небо было оранжевое с фиолетовыми облаками. Надо чаще обращать внимание на такие моменты"
 Действие: create_note(
     title="Красивый закат",
@@ -86,7 +104,7 @@ AGENT_SYSTEM_PROMPT = """
     folder="Personal"
 )
 
-Пример 5 - Смешанный контент:
+Пример 6 - Смешанный контент:
 Вход: "Не забыть позвонить маме в среду. Кстати идея для подарка - можно подарить ей абонемент на йогу"
 Действие 1: add_todo_task(task="Позвонить маме", priority="high", due_date="2025-01-22")
 Действие 2: create_note(
@@ -102,9 +120,10 @@ AGENT_SYSTEM_PROMPT = """
 - Задачи всегда начинай с глагола в инфинитиве
 - Сохраняй важные детали, даты, имена, цифры
 - Если непонятно какой тип - создавай заметку в Personal
-- Если есть явная задача - всегда добавляй в TODO, даже если есть другой контент
+- ВАЖНО: Если указано конкретное время встречи/звонка - используй create_calendar_event, а не add_todo_task
+- Если есть явная задача БЕЗ точного времени - добавляй в TODO
 - Всегда отвечай на русском языке
-- Будь проактивным: если слышишь срок/дату - добавь due_date
+- Будь проактивным: если слышишь срок/дату - добавь due_date или создай событие в календаре
 """
 
 
@@ -115,9 +134,10 @@ class VoiceNotesAgent:
     Использует OpenAI API с function calling для выполнения действий.
     """
 
-    def __init__(self, api_key: str, vault_service: GitHubVaultService):
+    def __init__(self, api_key: str, vault_service: GitHubVaultService, calendar_service=None):
         self.client = AsyncOpenAI(api_key=api_key)
         self.vault = vault_service
+        self.calendar = calendar_service
         self.model = "gpt-4o-mini"
 
     async def process_transcription(self, transcription: str) -> dict:
@@ -134,6 +154,7 @@ class VoiceNotesAgent:
         """
         from app.tools.note_tools import create_note, append_to_note, list_notes
         from app.tools.todo_tools import add_todo_task
+        from app.tools.calendar_tools import create_calendar_event, list_calendar_events
         import json
 
         # Подготовка сообщений для агента
@@ -144,6 +165,57 @@ class VoiceNotesAgent:
 
         # Определяем tools для function calling
         tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_calendar_event",
+                    "description": "Создаёт событие в Google Calendar. Используй для встреч, звонков, напоминаний с КОНКРЕТНЫМ временем.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "title": {
+                                "type": "string",
+                                "description": "Название события"
+                            },
+                            "start_date": {
+                                "type": "string",
+                                "description": "Дата и время начала (например: 'завтра в 15:00', '2025-01-20 10:00', 'послезавтра в 14:30')"
+                            },
+                            "duration_minutes": {
+                                "type": "integer",
+                                "description": "Длительность в минутах (по умолчанию 60)",
+                                "default": 60
+                            },
+                            "description": {
+                                "type": "string",
+                                "description": "Описание события (опционально)"
+                            },
+                            "location": {
+                                "type": "string",
+                                "description": "Место проведения (опционально)"
+                            }
+                        },
+                        "required": ["title", "start_date"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_calendar_events",
+                    "description": "Возвращает список ближайших событий в календаре. Используй когда пользователь спрашивает про календарь.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "max_results": {
+                                "type": "integer",
+                                "description": "Максимальное количество событий (по умолчанию 5)",
+                                "default": 5
+                            }
+                        }
+                    }
+                }
+            },
             {
                 "type": "function",
                 "function": {
@@ -268,7 +340,21 @@ class VoiceNotesAgent:
                 function_args = json.loads(tool_call.function.arguments)
 
                 # Вызываем соответствующую функцию
-                if function_name == "create_note":
+                if function_name == "create_calendar_event":
+                    result = await create_calendar_event(
+                        title=function_args["title"],
+                        start_date=function_args["start_date"],
+                        duration_minutes=function_args.get("duration_minutes", 60),
+                        description=function_args.get("description"),
+                        location=function_args.get("location"),
+                        calendar=self.calendar
+                    )
+                elif function_name == "list_calendar_events":
+                    result = await list_calendar_events(
+                        max_results=function_args.get("max_results", 5),
+                        calendar=self.calendar
+                    )
+                elif function_name == "create_note":
                     result = await create_note(
                         title=function_args["title"],
                         content=function_args["content"],

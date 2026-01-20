@@ -4,9 +4,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-**Voice Notes Service** - AI-powered voice notes processing with automatic transcription and Obsidian integration. Records voice notes from iPhone (via iOS Shortcuts), transcribes with OpenAI Whisper, analyzes content with AI agents, and saves to Obsidian vault via GitHub API.
+**Voice Notes Service** - AI-powered voice notes processing with automatic transcription, Obsidian integration, and Google Calendar. Records voice notes from iPhone (via iOS Shortcuts), transcribes with OpenAI Whisper, analyzes content with AI agents, creates calendar events, and saves to Obsidian vault via GitHub API.
 
-**Tech Stack**: FastAPI, OpenAI Whisper API, OpenAI Agents SDK, GitHub API, Python 3.11+, `uv` package manager
+**Tech Stack**: FastAPI, OpenAI Whisper API, OpenAI Agents SDK, Google Calendar API, GitHub API, Python 3.11+, `uv` package manager
 
 **Key Concept**: The service acts as a bridge between iPhone → Cloud Backend (Render.com) → GitHub Repository ← Obsidian (local). GitHub serves as the intermediary because Obsidian runs locally while the service runs in the cloud.
 
@@ -25,6 +25,7 @@ source .venv/bin/activate  # Windows: .venv\Scripts\activate
 # Configure environment
 cp .env.example .env
 # Edit .env with: OPENAI_API_KEY, GITHUB_TOKEN, GITHUB_REPO_OWNER, GITHUB_REPO_NAME
+# Optional: GOOGLE_CALENDAR_CREDENTIALS_JSON (for calendar integration)
 
 # Run development server
 uvicorn app.main:app --reload --port 8000
@@ -49,8 +50,9 @@ ruff check app/ tests/      # Lint
 1. **Audio Upload** → POST `/api/voice` with multipart/form-data
 2. **Transcription** → `WhisperTranscriber` converts audio to text (Russian language)
 3. **AI Processing** → `VoiceNotesAgent` analyzes transcription and determines actions
-4. **GitHub Integration** → `GitHubVaultService` creates/updates files in vault
-5. **Obsidian Sync** → Obsidian Git plugin auto-pulls changes (1-5 min delay)
+4. **Action Execution** → Creates calendar events (if calendar enabled), saves notes, adds tasks
+5. **GitHub Integration** → `GitHubVaultService` creates/updates files in vault
+6. **Obsidian Sync** → Obsidian Git plugin auto-pulls changes (1-5 min delay)
 
 ### Core Services Architecture
 
@@ -62,10 +64,17 @@ ruff check app/ tests/      # Lint
 
 **`app/services/agent.py`** - `VoiceNotesAgent`
 - System prompt defines behavior: analyze transcription, classify content, execute actions
-- Content types: TODO tasks, Ideas, Work notes, Personal notes, Mixed content
+- Content types: Calendar events, TODO tasks, Ideas, Work notes, Personal notes, Mixed content
 - Uses OpenAI Agents SDK with function calling (tools)
 - Model: `gpt-4o-mini`
+- Calendar integration is optional (gracefully degrades if not configured)
 - Returns: `{actions: list[dict], summary: str}`
+
+**`app/services/google_calendar.py`** - `GoogleCalendarService` (optional)
+- Uses Service Account authentication
+- Creates events with timezone support (default: Europe/Moscow)
+- Methods: `create_event()`, `list_upcoming_events()`
+- Handles API errors gracefully
 
 **`app/services/github_vault.py`** - `GitHubVaultService`
 - REST API client for GitHub Contents API
@@ -95,6 +104,16 @@ ruff check app/ tests/      # Lint
   - Task format: `- [ ] {task} (due: {YYYY-MM-DD})`
   - Tasks inserted after section header, before next section
 
+**`app/tools/calendar_tools.py`**
+- `create_calendar_event(title, start_date, duration_minutes, description, location, calendar)` - Creates Google Calendar event
+  - Natural language date parsing: "завтра в 15:00", "послезавтра в 14:30"
+  - Supports ISO dates: "2025-01-20 10:00"
+  - Default duration: 60 minutes
+  - Returns success message with event details
+- `list_calendar_events(max_results, calendar)` - Lists upcoming events
+  - Default: 5 events
+  - Formatted output with Russian date format
+
 ### Important Implementation Details
 
 **GitHub API Constraints**:
@@ -114,16 +133,28 @@ vault/
 ```
 
 **Content Type Classification** (Agent's responsibility):
-- **TODO Task** triggers: "нужно", "купить", "сделать", "не забыть"
+- **Calendar Events** triggers: "встреча", "звонок", "созвон" + specific time mentioned
+  - Priority: Used when КОНКРЕТНОЕ ВРЕМЯ is specified ("завтра в 15:00")
+  - Falls back to TODO if calendar not configured
+- **TODO Task** triggers: "нужно", "купить", "сделать", "не забыть" (without specific time)
 - **Ideas** triggers: "идея", "можно", "интересно было бы"
 - **Work Notes** triggers: work-related keywords, project names
 - **Personal Notes**: fallback when unclear
+
+**Google Calendar Integration** (optional):
+- Service Account authentication with JSON credentials
+- Credentials stored as single-line JSON string in `GOOGLE_CALENDAR_CREDENTIALS_JSON`
+- Calendar must be shared with service account email
+- Default timezone: `Europe/Moscow`
+- Setup guide: `GOOGLE_CALENDAR_SETUP.md`
+- Gracefully degrades if not configured (calendar events become TODO tasks)
 
 **Error Handling**:
 - Voice processing failures return `VoiceNoteResponse(success=False, error=..., details=...)`
 - GitHub 404 → `None` (file not found)
 - GitHub 409 → Conflict (SHA mismatch or file exists)
 - OpenAI API failures logged with `exc_info=True`
+- Calendar initialization failures logged as warnings, service continues without calendar
 
 ## Project Structure Context
 

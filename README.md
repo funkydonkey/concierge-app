@@ -10,6 +10,7 @@ AI-powered voice notes processing with automatic transcription and Obsidian inte
 - 🤖 **AI Agent** - Smart content classification and action execution
 - 📝 **Automatic Note Creation** - Markdown notes with YAML frontmatter
 - ✅ **TODO Management** - Priority-based task organization
+- 📅 **Google Calendar Integration** - Automatic event creation from voice notes
 - 🔄 **GitHub Integration** - Obsidian vault sync via GitHub API
 - 📱 **iOS Shortcuts** - Record and process on-the-go
 
@@ -35,10 +36,11 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 cp .env.example .env
 
 # Edit .env and add your keys:
-# - OPENAI_API_KEY       (from OpenAI platform)
-# - GITHUB_TOKEN         (personal access token with 'repo' scope)
-# - GITHUB_REPO_OWNER    (your GitHub username)
-# - GITHUB_REPO_NAME     (your Obsidian vault repository)
+# - OPENAI_API_KEY                      (from OpenAI platform)
+# - GITHUB_TOKEN                        (personal access token with 'repo' scope)
+# - GITHUB_REPO_OWNER                   (your GitHub username)
+# - GITHUB_REPO_NAME                    (your Obsidian vault repository)
+# - GOOGLE_CALENDAR_CREDENTIALS_JSON    (optional - for calendar integration)
 ```
 
 ### 3. Run
@@ -65,6 +67,7 @@ python test_api.py test.m4a
 - **FastAPI** backend for REST API
 - **OpenAI Whisper** for audio transcription
 - **OpenAI Agents SDK** for AI-powered content analysis
+- **Google Calendar API** for event creation (optional)
 - **GitHub API** for Obsidian vault integration
 
 ## Endpoints
@@ -126,13 +129,19 @@ voice-notes-service/
 
 The agent automatically classifies content and takes action:
 
+- **Calendar Events** → `create_calendar_event()` when specific time mentioned
 - **TODO Tasks** → `add_todo_task()` with priority detection
 - **Ideas** → `create_note(folder="Ideas")` with Markdown formatting
 - **Work Notes** → `create_note(folder="Work")` with action items
 - **Personal Notes** → `create_note(folder="Personal")`
 - **Mixed Content** → Multiple actions in sequence
 
-Triggered by keywords: "нужно", "идея", "купить", "не забыть", etc.
+Examples:
+- "Встреча с клиентом завтра в 15:00" → Creates calendar event
+- "Нужно купить молоко" → Adds TODO task
+- "Идея для приложения..." → Creates note in Ideas folder
+
+Triggered by keywords: "встреча", "звонок", "нужно", "идея", "купить", "не забыть", etc.
 
 ## Deployment
 
@@ -149,5 +158,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md) for detailed deployment instructions.
 
 - `spec.md` - Full technical specification
 - `LEARNING.md` - Implementation tasks (all completed ✅)
-- `DEPLOYMENT.md` - Deployment guide
+- `DEPLOYMENT.md` - Deployment guide for Render.com
+- `GOOGLE_CALENDAR_SETUP.md` - 📅 Google Calendar integration setup guide
+- `IOS_SHORTCUTS_GUIDE.md` - 📱 Пошаговая инструкция по созданию iOS шортката
 - `CLAUDE.md` - Claude Code reference
