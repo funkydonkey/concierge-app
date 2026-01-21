@@ -9,6 +9,9 @@ from typing import Annotated
 from app.services.google_calendar import GoogleCalendarService
 import re
 from zoneinfo import ZoneInfo
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> datetime:
@@ -25,6 +28,8 @@ def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> dateti
     date_str = date_str.lower().strip()
     tz = ZoneInfo(timezone)
     now = datetime.now(tz)
+
+    logger.info(f"📅 Parsing date: '{date_str}' (current time: {now.strftime('%Y-%m-%d %H:%M %Z')})")
 
     # ISO формат с временем
     if re.match(r"\d{4}-\d{2}-\d{2}\s+\d{2}:\d{2}", date_str):
@@ -48,6 +53,7 @@ def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> dateti
     if date_pattern:
         day = int(date_pattern.group(1))
         month = months_ru[date_pattern.group(2)]
+        logger.info(f"   ✓ Matched Russian date: day={day}, month={month}")
 
         # Определяем год: если дата уже прошла в текущем году, берём следующий год
         year = now.year
@@ -55,10 +61,13 @@ def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> dateti
             target_date = now.replace(year=year, month=month, day=day)
             if target_date < now:
                 # Дата уже прошла в этом году, берём следующий год
+                logger.info(f"   → Date {target_date.date()} is in the past, using next year")
                 year = now.year + 1
                 target_date = now.replace(year=year, month=month, day=day)
+            logger.info(f"   → Calculated date: {target_date.strftime('%Y-%m-%d')}")
         except ValueError:
             # Невалидная дата (например 31 февраля)
+            logger.warning(f"   ✗ Invalid date: {day}/{month}, using tomorrow")
             target_date = now + timedelta(days=1)
 
         # Извлекаем время если указано
@@ -66,9 +75,12 @@ def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> dateti
         if time_match:
             hour = int(time_match.group(1))
             minute = int(time_match.group(2))
-            return target_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+            result = target_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
         else:
-            return target_date.replace(hour=10, minute=0, second=0, microsecond=0)
+            result = target_date.replace(hour=10, minute=0, second=0, microsecond=0)
+
+        logger.info(f"   ✅ Final parsed date: {result.strftime('%Y-%m-%d %H:%M %Z')}")
+        return result
 
     # Относительные даты
     if "завтра" in date_str:
