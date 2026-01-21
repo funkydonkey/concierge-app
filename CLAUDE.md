@@ -106,8 +106,12 @@ ruff check app/ tests/      # Lint
 
 **`app/tools/calendar_tools.py`**
 - `create_calendar_event(title, start_date, duration_minutes, description, location, calendar)` - Creates Google Calendar event
-  - Natural language date parsing: "завтра в 15:00", "послезавтра в 14:30"
-  - Supports ISO dates: "2025-01-20 10:00"
+  - Natural language date parsing:
+    - Relative: "завтра в 15:00", "послезавтра в 14:30", "сегодня"
+    - Russian format: "3 февраля в 12:00", "15 марта"
+    - ISO dates: "2026-01-20 10:00"
+  - Smart year detection: if date passed in current year, uses next year
+  - Timezone-aware: uses Berlin (CET) timezone by default
   - Default duration: 60 minutes
   - Returns success message with event details
 - `list_calendar_events(max_results, calendar)` - Lists upcoming events
