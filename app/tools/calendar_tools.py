@@ -36,6 +36,40 @@ def parse_russian_date(date_str: str, timezone: str = "Europe/Berlin") -> dateti
         dt = datetime.strptime(date_str + " 10:00", "%Y-%m-%d %H:%M")
         return dt.replace(tzinfo=tz)
 
+    # Парсим даты типа "3 февраля", "15 марта" и т.д.
+    months_ru = {
+        "января": 1, "февраля": 2, "марта": 3, "апреля": 4,
+        "мая": 5, "июня": 6, "июля": 7, "августа": 8,
+        "сентября": 9, "октября": 10, "ноября": 11, "декабря": 12
+    }
+
+    # Ищем паттерн: число + месяц (например "3 февраля")
+    date_pattern = re.search(r"(\d{1,2})\s+(января|февраля|марта|апреля|мая|июня|июля|августа|сентября|октября|ноября|декабря)", date_str)
+    if date_pattern:
+        day = int(date_pattern.group(1))
+        month = months_ru[date_pattern.group(2)]
+
+        # Определяем год: если дата уже прошла в текущем году, берём следующий год
+        year = now.year
+        try:
+            target_date = now.replace(year=year, month=month, day=day)
+            if target_date < now:
+                # Дата уже прошла в этом году, берём следующий год
+                year = now.year + 1
+                target_date = now.replace(year=year, month=month, day=day)
+        except ValueError:
+            # Невалидная дата (например 31 февраля)
+            target_date = now + timedelta(days=1)
+
+        # Извлекаем время если указано
+        time_match = re.search(r"(\d{1,2}):(\d{2})", date_str)
+        if time_match:
+            hour = int(time_match.group(1))
+            minute = int(time_match.group(2))
+            return target_date.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        else:
+            return target_date.replace(hour=10, minute=0, second=0, microsecond=0)
+
     # Относительные даты
     if "завтра" in date_str:
         base = now + timedelta(days=1)
