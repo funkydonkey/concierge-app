@@ -68,6 +68,13 @@ AGENT_SYSTEM_PROMPT = """
    - Разбей контент логически
    - Каждое действие должно быть полным и самодостаточным
 
+6. РАБОТА С СУЩЕСТВУЮЩИМИ ЗАМЕТКАМИ:
+   Когда пользователь ссылается на существующий контент:
+   - Используй list_notes() чтобы найти нужную заметку
+   - Используй read_note() чтобы прочитать содержимое
+   - После прочтения можешь append_to_note() для дополнения
+   Триггеры: "добавь к заметке", "что в заметке про", "дополни заметку", "прочитай заметку"
+
 ПРИМЕРЫ:
 
 Пример 1 - Событие в календаре (относительная дата):
@@ -126,6 +133,24 @@ AGENT_SYSTEM_PROMPT = """
     folder="Ideas"
 )
 
+Пример 7 - Чтение и дополнение заметки:
+Вход: "Добавь к заметке про проект Альфа что встреча перенесена на понедельник"
+Действие 1: list_notes(folder="Work", search_query="Альфа")
+Результат: "- 2026-01-20-Встреча по проекту Альфа.md"
+Действие 2: read_note(note_path="Work/2026-01-20-Встреча по проекту Альфа.md")
+Результат: [содержимое заметки]
+Действие 3: append_to_note(
+    note_path="Work/2026-01-20-Встреча по проекту Альфа.md",
+    content="\n\n## Обновление\n\n- Встреча перенесена на понедельник"
+)
+
+Пример 8 - Вопрос о содержимом заметки:
+Вход: "Что у меня в заметке про подарок для мамы?"
+Действие 1: list_notes(folder="Ideas", search_query="подарок")
+Результат: "- 2026-01-20-Идея подарка для мамы.md"
+Действие 2: read_note(note_path="Ideas/2026-01-20-Идея подарка для мамы.md")
+Результат возвращается пользователю
+
 ПРАВИЛА ОБРАБОТКИ:
 - Убирай слова-паразиты: "эээ", "ну", "типа", "вот", "короче", "как бы"
 - Убирай повторы и запинки
@@ -165,7 +190,7 @@ class VoiceNotesAgent:
                 - actions: list[dict] - выполненные действия
                 - summary: str - краткое описание что сделано
         """
-        from app.tools.note_tools import create_note, append_to_note, list_notes
+        from app.tools.note_tools import create_note, append_to_note, list_notes, read_note
         from app.tools.todo_tools import add_todo_task
         from app.tools.calendar_tools import create_calendar_event, list_calendar_events
         import json
@@ -309,7 +334,7 @@ class VoiceNotesAgent:
                 "type": "function",
                 "function": {
                     "name": "list_notes",
-                    "description": "Возвращает список заметок в указанной папке. Используй чтобы найти существующую заметку перед append_to_note.",
+                    "description": "Возвращает список заметок в указанной папке. Используй чтобы найти существующую заметку перед append_to_note или read_note.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -325,6 +350,23 @@ class VoiceNotesAgent:
                             }
                         },
                         "required": ["folder"]
+                    }
+                }
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_note",
+                    "description": "Читает содержимое заметки из vault. Используй когда пользователь ссылается на существующую заметку или хочет узнать её содержимое.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "note_path": {
+                                "type": "string",
+                                "description": "Полный путь к заметке (папка/файл.md), например: Work/2026-01-20-Project X.md"
+                            }
+                        },
+                        "required": ["note_path"]
                     }
                 }
             }
@@ -391,6 +433,11 @@ class VoiceNotesAgent:
                     result = await list_notes(
                         folder=function_args["folder"],
                         search_query=function_args.get("search_query"),
+                        vault=self.vault
+                    )
+                elif function_name == "read_note":
+                    result = await read_note(
+                        note_path=function_args["note_path"],
                         vault=self.vault
                     )
                 else:
