@@ -86,34 +86,49 @@ async def append_to_note(
 
 
 async def list_notes(
-    folder: Annotated[str, "Папка для поиска: Ideas, Work, Personal, Voice Notes"] = "Voice Notes",
+    folder: Annotated[str | None, "Папка для поиска: Ideas, Work, Personal, Voice Notes. Если None - поиск во всех папках"] = None,
     search_query: Annotated[str | None, "Поиск по названию (опционально)"] = None,
     vault: GitHubVaultService | None = None
 ) -> str:
     """
-    Возвращает список заметок в указанной папке.
+    Возвращает список заметок в указанной папке или во всех папках (если folder=None).
     Используй чтобы найти существующую заметку перед append_to_note или read_note.
     """
     if vault is None:
         raise ValueError("GitHubVaultService не передан!")
 
-    # Получаем список файлов в папке
-    files = await vault.list_folder(folder)
+    all_notes = []
 
-    # Фильтруем только markdown файлы
-    notes = [f for f in files if f.endswith('.md')]
+    # Если папка не указана - ищем во всех папках
+    if folder is None:
+        folders = ["Ideas", "Work", "Personal", "Voice Notes"]
+        for f in folders:
+            try:
+                files = await vault.list_folder(f)
+                # Добавляем путь с папкой к каждой заметке
+                notes_with_path = [f"{f}/{file}" for file in files if file.endswith('.md')]
+                all_notes.extend(notes_with_path)
+            except Exception:
+                # Игнорируем ошибки (папка может не существовать)
+                continue
+    else:
+        # Ищем в конкретной папке
+        files = await vault.list_folder(folder)
+        all_notes = [f"{folder}/{file}" for file in files if file.endswith('.md')]
 
     # Если есть поисковый запрос - фильтруем по названию
     if search_query:
         search_lower = search_query.lower()
-        notes = [n for n in notes if search_lower in n.lower()]
+        all_notes = [n for n in all_notes if search_lower in n.lower()]
 
     # Форматируем результат для AI агента
-    if not notes:
-        return f"В папке {folder} нет заметок" + (f" по запросу '{search_query}'" if search_query else "")
+    if not all_notes:
+        location = f"папке {folder}" if folder else "vault"
+        return f"В {location} нет заметок" + (f" по запросу '{search_query}'" if search_query else "")
 
-    notes_list = "\n".join(f"- {note}" for note in notes)
-    return f"Заметки в {folder}:\n{notes_list}"
+    notes_list = "\n".join(f"- {note}" for note in all_notes)
+    location = folder if folder else "всех папках"
+    return f"Заметки в {location}:\n{notes_list}"
 
 
 async def read_note(
