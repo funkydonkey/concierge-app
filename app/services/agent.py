@@ -377,20 +377,30 @@ class VoiceNotesAgent:
             }
         ]
 
-        # Вызываем OpenAI API
-        response = await self.client.chat.completions.create(
-            model=self.model,
-            messages=messages,
-            tools=tools,
-            tool_choice="auto"
-        )
-
-        # Обрабатываем ответ
+        # Обрабатываем запрос в цикле для поддержки multi-turn tool calling
         actions = []
-        assistant_message = response.choices[0].message
+        max_iterations = 10  # Защита от бесконечного цикла
+        iteration = 0
 
-        # Проверяем есть ли tool calls
-        if assistant_message.tool_calls:
+        while iteration < max_iterations:
+            iteration += 1
+
+            # Вызываем OpenAI API
+            response = await self.client.chat.completions.create(
+                model=self.model,
+                messages=messages,
+                tools=tools,
+                tool_choice="auto"
+            )
+
+            assistant_message = response.choices[0].message
+
+            # Если нет tool calls - это финальный ответ
+            if not assistant_message.tool_calls:
+                summary = assistant_message.content or "Обработка завершена."
+                break
+
+            # Есть tool calls - выполняем их
             # Добавляем ответ ассистента в историю
             messages.append(assistant_message)
 
@@ -463,16 +473,11 @@ class VoiceNotesAgent:
                     "content": result
                 })
 
-            # Получаем финальный ответ от модели
-            final_response = await self.client.chat.completions.create(
-                model=self.model,
-                messages=messages
-            )
+            # Цикл продолжится и агент сможет вызвать ещё tool calls
 
-            summary = final_response.choices[0].message.content
-        else:
-            # Если tool calls нет, просто берём ответ модели
-            summary = assistant_message.content or "Обработка завершена, действий не требуется."
+        # Если вышли из цикла без break (достигнут max_iterations)
+        if iteration >= max_iterations:
+            summary = "Превышено максимальное количество итераций. Обработка остановлена."
 
         return {
             "actions": actions,
