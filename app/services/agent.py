@@ -434,7 +434,7 @@ class VoiceNotesAgent:
                     )
                 elif function_name == "list_notes":
                     result = await list_notes(
-                        folder=function_args["folder"],
+                        folder=function_args.get("folder"),
                         search_query=function_args.get("search_query"),
                         vault=self.vault
                     )
