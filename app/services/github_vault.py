@@ -166,7 +166,7 @@ class GitHubVaultService:
             folder_path: Путь к папке
 
         Returns:
-            Список путей к файлам
+            Список ИМЁН файлов (без пути к папке)
         """
         async with httpx.AsyncClient() as client:
             url = f"{self.base_url}/contents/{folder_path}?ref={self.branch}"
@@ -177,8 +177,8 @@ class GitHubVaultService:
 
             data = response.json()
 
-            # Фильтруем только файлы (не директории)
-            files = [item["path"] for item in data if item["type"] == "file"]
+            # Фильтруем только файлы (не директории) и возвращаем только имена
+            files = [item["name"] for item in data if item["type"] == "file"]
 
             return files
 
